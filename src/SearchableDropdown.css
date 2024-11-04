@@ -1,0 +1,6 @@
+@font-face {
+    font-family: 'DomoGlyphs';
+    src: url('/public/domocons.woff') format('woff');
+    font-weight: normal;
+    font-style: normal;
+}
