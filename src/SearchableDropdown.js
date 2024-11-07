@@ -1,16 +1,19 @@
 import React, { useState } from 'react';
 import './SearchableDropdown.css';
+import domo from 'ryuu.js';
 
 const SearchableDropdown = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const [selectedItems, setSelectedItems] = useState([]);
+  const [tempSelectedItems, setTempSelectedItems] = useState([]);
+  const [showSelected, setShowSelected] = useState(false);
   
 
-  var options 
-  domo.get('/data/v1/sales', {format: 'csv'}).then(function(data){
-    options = data['country']
-  });
+  // var options2 
+  // domo.get('/data/v1/bef23c34-93d2-4006-8e18-581f37da405e', {format: 'csv'}).then(function(data){
+  //   options2 = data['country']
+  // });
 
   const options = [
     'Apple Banana',
@@ -32,11 +35,20 @@ const SearchableDropdown = () => {
     ? options.filter(option => unorderedMatch(option, searchTerm))
     : options;
 
+  const displayedOptions = showSelected ? selectedItems : filteredOptions;
+
   const handleSearchChange = (event) => {
     setSearchTerm(event.target.value);
   };
 
-  const toggleDropdown = () => setIsOpen(!isOpen);
+  const toggleDropdown = () => {
+      setIsOpen(!isOpen);
+      if (!isOpen) {
+          setSearchTerm('');
+          setShowSelected(false);
+          setTempSelectedItems(selectedItems);
+      }
+  };
 
   // const handleOptionClick = (option) => {
   //   if (selectedItems.includes(option)) {
@@ -48,19 +60,49 @@ const SearchableDropdown = () => {
   // };
   const handleOptionClick = (option) => {
     // Toggle selection of the option
-    if (selectedItems.includes(option)) {
-      setSelectedItems(selectedItems.filter(item => item !== option));
+    if (tempSelectedItems.includes(option)) {
+      setTempSelectedItems(tempSelectedItems.filter(item => item !== option));
     } else {
-      setSelectedItems([...selectedItems, option]);
+      setTempSelectedItems([...tempSelectedItems, option]);
     }
   };
 
-  const removeSelectedItem = (item) => {
-    setSelectedItems(selectedItems.filter(selected => selected !== item));
-  };
+  // const removeSelectedItem = (item) => {
+  //   setSelectedItems(selectedItems.filter(selected => selected !== item));
+  // };
 
   const clearAllSelections = () => {
-    setSelectedItems([]);
+    setTempSelectedItems([]);
+  };
+
+  const selectAllFiltered = () => {
+    const allSelected = filteredOptions.every(option =>
+      tempSelectedItems.includes(option)
+    );
+    if (allSelected) {
+      // Unselect all filtered options
+      setTempSelectedItems(tempSelectedItems.filter(item => !filteredOptions.includes(item)));
+    } else {
+      // Select all filtered options
+      setTempSelectedItems([
+        ...tempSelectedItems,
+        ...filteredOptions.filter(option => !tempSelectedItems.includes(option)),
+      ]);
+    }
+  };
+
+  const clearAllFiltered = () => {
+    setTempSelectedItems(tempSelectedItems.filter(item => !filteredOptions.includes(item)));
+  };
+
+  const handleCancel = () => {
+      setIsOpen(false);
+      setTempSelectedItems(selectedItems);
+  };
+
+  const handleApply = () => {
+      setSelectedItems(tempSelectedItems);
+      setIsOpen(false);
   };
 
   return (
@@ -74,84 +116,148 @@ const SearchableDropdown = () => {
           flexWrap: 'wrap',
           cursor: 'pointer',
         }}
-        onClick={() => setIsOpen(true)}
+        onClick={toggleDropdown}
       >
-        {selectedItems.map((item, index) => (
-          <div
-            key={index}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              backgroundColor: '#e0e0e0',
-              padding: '4px 8px',
-              borderRadius: '12px',
-              marginRight: '4px',
-              marginBottom: '4px',
-            }}
-          >
-            {item}
-            <span
-              onClick={(e) => {
-                e.stopPropagation();
-                removeSelectedItem(item);
-              }}
+        {selectedItems.length === 0 ? (
+            <span style={{ color: '#888' }}>Select</span>
+        ) : (
+          selectedItems.map((item, index) => (
+            <div
+              key={index}
               style={{
-                marginLeft: '8px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                color: '#888',
+                display: 'flex',
+                alignItems: 'center',
+                backgroundColor: '#e0e0e0',
+                padding: '4px 8px',
+                borderRadius: '12px',
+                marginRight: '4px',
+                marginBottom: '4px',
               }}
             >
-              &times;
-            </span>
-          </div>
-        ))}
-        <input
-          type="text"
-          placeholder="Select"
-          value={searchTerm}
-          onChange={handleSearchChange}
-          onFocus={() => setIsOpen(true)}
-          style={{
-            flex: '1',
-            border: 'none',
-            outline: 'none',
-            fontSize: '16px',
-            padding: '4px',
-            minWidth: '50px',
-          }}
-        />
-        <span style={{ marginLeft: 'auto', fontSize: '12px', fontFamily: 'DomoGlyphs' }}>&#xe063;</span> {/* Arrow */}
+              {item}
+            </div>
+          ))
+        )}
+        <span style={{ marginLeft: 'auto', fontSize: '20px', color: '#888', fontWeight: 'bold', fontFamily: 'DomoGlyphs' }}>&#xe063;</span> {/* Arrow */}
       </div>
       {isOpen && (
-        <ul
+        <div
           style={{
             border: '1px solid #ccc',
-            maxHeight: '150px',
-            overflowY: 'auto',
-            marginTop: '4px',
-            padding: '0',
-            listStyleType: 'none',
             position: 'absolute',
-            width: '100%',
+            width: '99.8%',
             backgroundColor: '#fff',
             zIndex: 1,
           }}
         >
-          <li
+          {/* Fixed Search Bar */}
+          <div style={{ padding: '8px', borderBottom: '1px solid #ddd' }}>
+            <input
+              type="text"
+              placeholder="Search..."
+              value={searchTerm}
+              onChange={handleSearchChange}
+              style={{
+                width: '98%',
+                padding: '4px 8px',
+                border: '1px solid #ccc',
+                borderRadius: '4px',
+              }}
+            />
+          </div>
+          {/* Select All Filtered Option */}
+          <div
             style={{
-              padding: '8px',
+              padding: '4px',
               cursor: 'pointer',
-              fontWeight: 'bold',
-              color: '#007bff',
-              textAlign: 'center',
+              fontWeight: '400',
+              fontSize: '12px',
+              // color: '#007bff',
+              color: '#888',
+              textAlign: 'left',
+              // borderBottom: '1px solid #ddd',
             }}
-            onClick={clearAllSelections}
+            onClick={selectAllFiltered}
+            onMouseEnter={(e) => {
+              e.target.style.backgroundColor = '#f0f0f0';
+              // e.target.style.boderColor = '#bbb';
+            }}
+            onMouseLeave={(e) => {
+             e.target.style.backgroundColor = '#fff';
+             // e.target.style.borderColor = 'transparent';
+            }}
           >
-            Clear All Selections
-          </li>
-          {filteredOptions.length > 0 ? (
-            filteredOptions.map((option, index) => (
+            Select Filtered Options
+          </div>
+          {/* Clear All Filtered Option */}
+          <div
+            style={{
+              padding: '4px',
+              cursor: 'pointer',
+              fontWeight: '400',
+              fontSize: '12px',
+              // color: '#007bff',
+              color: '#888',
+              textAlign: 'left',
+              // borderBottom: '1px solid #ddd',
+            }}
+            onClick={clearAllFiltered}
+            onMouseEnter={(e) => {
+              e.target.style.backgroundColor = '#f0f0f0';
+              // e.target.style.boderColor = '#bbb';
+            }}
+            onMouseLeave={(e) => {
+             e.target.style.backgroundColor = '#fff';
+             // e.target.style.borderColor = 'transparent';
+            }}
+          >
+            Clear Filtered Options
+          </div>
+
+          {/* Clear All Selections Option */}
+          {/* <div
+          //   style={{
+          //     padding: '4px',
+          //     cursor: 'pointer',
+          //     fontWeight: '400',
+          //     fontSize: '12px',
+          //     // color: '#007bff',
+          //     color: '#888',
+          //     textAlign: 'left',
+          //     // borderBottom: '1px solid #ddd',
+          //   }}
+          //   onClick={clearAllSelections}
+          //   onMouseEnter={(e) => {
+          //     e.target.style.backgroundColor = '#f0f0f0';
+          //     // e.target.style.boderColor = '#bbb';
+          //   }}
+          //   onMouseLeave={(e) => {
+          //    e.target.style.backgroundColor = '#fff';
+          //    // e.target.style.borderColor = 'transparent';
+          //   }}
+          //
+          // >
+          //   Clear All Selections
+          // </div>
+        {/* Scrollable Options */}
+        <ul
+          style={{
+            // border: '1px solid #ccc',
+            maxHeight: '210px',
+            overflowY: 'auto',
+            margin: '0',
+            // marginTop: '4px',
+            padding: '0',
+            listStyleType: 'none',
+            // position: 'absolute',
+            // width: '100%',
+            // backgroundColor: '#fff',
+            // zIndex: 1,
+          }}
+        >
+          {/* Options */}
+          {displayedOptions.length > 0 ? (
+            displayedOptions.map((option, index) => (
               <li
                 key={index}
                 style={{
@@ -164,8 +270,9 @@ const SearchableDropdown = () => {
               >
                 <input
                   type="checkbox"
-                  checked={selectedItems.includes(option)}
-                  onChange={() => handleOptionClick(option)}
+                  checked={tempSelectedItems.includes(option)}
+                  readOnly
+                  // onChange={() => handleOptionClick(option)}
                   style={{ marginRight: '8px' }}
                 />
                 <span>{option}</span>
@@ -175,6 +282,124 @@ const SearchableDropdown = () => {
             <li style={{ padding: '8px' }}>No results found</li>
           )}
         </ul>
+          {/* Cancel and Apply Buttons */}
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '16px 8px 8px',
+              borderTop: '1px solid #ddd',
+              backgroundColor: '#f9f9f9',
+            }}
+          >
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                onClick={clearAllSelections}
+                style={{
+                  padding: '6px 12px',
+                  backgroundColor: '#ff4d4d',
+                  // border: '1px solid #ccc',
+                  color: '#fff',
+                  fontWeight: 'bold',
+                  border: '1px solid transparent',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  // marginRight: '8px',
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.backgroundColor = '#cc0000';
+                  e.target.style.boxShadow = '0px 4px 8px rgba(0, 0, 0, 0.2)';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.backgroundColor = '#ff4d4d';
+                  e.target.style.boxShadow = 'none';
+                }}
+              >
+                CLEAR ALL
+              </button>
+              {/* Show selected button */}
+              <button
+                onClick={() => setShowSelected(!showSelected)}
+                style={{
+                  padding: '6px 12px',
+                  backgroundColor: 'orange',
+                  // border: '1px solid #ccc',
+                  color: '#fff',
+                  fontWeight: 'bold',
+                  border: '1px solid transparent',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  marginRight: '8px',
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.backgroundColor = 'darkorange';
+                  e.target.style.boxShadow = '0px 4px 8px rgba(0, 0, 0, 0.2)';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.backgroundColor = 'orange';
+                  e.target.style.boxShadow = 'none';
+                }}
+              >
+                {showSelected ? 'SHOW ALL' : 'SHOW SELECTED'}
+              </button>
+            </div>
+            <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  onClick={handleCancel}
+                  style={{
+                    padding: '6px 12px',
+                    backgroundColor: '#fff',
+                    // border: '1px solid #ccc',
+                    fontWeight: 'bold',
+                    border: '1px solid transparent',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    // marginRight: '8px',
+                    // justifyContent: 'flex-end',
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.backgroundColor = '#f0f0f0';
+                    // e.target.style.borderColor = '#bbb';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.backgroundColor = '#fff';
+                    e.target.style.borderColor = 'transparent';
+                  }}
+                >
+                  CANCEL
+                </button>
+                <button
+                  onClick={handleApply}
+                  style={{
+                    padding: '6px 12px',
+                    backgroundColor: '#007bff',
+                    color: '#fff',
+                    fontWeight: 'bold',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    // justifyContent: 'flex-end',
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.backgroundColor = '#0056b3';
+                    e.target.style.boxShadow = '0px 4px 8px rgba(0, 0, 0, 0.2)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.backgroundColor = '#007bff';
+                    e.target.style.boxShadow = 'none';
+                  }}
+
+                >
+                  APPLY
+                </button>
+            </div>
+          </div>
+      </div>
       )}
     </div>
   );
